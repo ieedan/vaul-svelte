@@ -98,12 +98,6 @@
 		animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
 	}
 
-	/* Cap vertical drawers to visible viewport (fixes Android browser chrome clipping). 100dvh = dynamic viewport height (excludes browser chrome). */
-	:global([data-vaul-drawer][data-vaul-drawer-direction="bottom"]),
-	:global([data-vaul-drawer][data-vaul-drawer-direction="top"]) {
-		max-height: 100dvh;
-	}
-
 	:global(
 			[data-vaul-drawer][data-vaul-snap-points="false"][data-vaul-drawer-direction="bottom"][data-state="open"]
 		) {

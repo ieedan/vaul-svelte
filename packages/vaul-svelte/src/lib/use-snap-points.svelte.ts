@@ -35,32 +35,21 @@ export function useSnapPoints({
 		fadeFromIndex: number | undefined;
 		snapPoints: (number | string)[] | undefined;
 	}>) {
-	function getWindowDimensions() {
-		if (typeof window === "undefined") return undefined;
-		// Use visual viewport on mobile so drawer doesn't extend below browser chrome (e.g. Android bottom bar)
-		return {
-			innerWidth: getVisualViewportWidth(),
-			innerHeight: getVisualViewportHeight(),
-		};
-	}
-
-	let windowDimensions = $state(getWindowDimensions());
+	let windowDimensions = $state(
+		typeof window !== "undefined"
+			? { innerWidth: getVisualViewportWidth(), innerHeight: getVisualViewportHeight() }
+			: undefined
+	);
 
 	onMount(() => {
-		function updateDimensions() {
-			windowDimensions = getWindowDimensions();
+		function onResize() {
+			windowDimensions = {
+				innerWidth: getVisualViewportWidth(),
+				innerHeight: getVisualViewportHeight(),
+			};
 		}
 
-		const unsubResize = on(window, "resize", updateDimensions);
-		const visualViewport = window.visualViewport;
-		const unsubVv = visualViewport
-			? on(visualViewport, "resize", updateDimensions)
-			: () => {};
-
-		return () => {
-			unsubResize();
-			unsubVv();
-		};
+		return on(window, "resize", onResize);
 	});
 
 	const isLastSnapPoint = $derived(

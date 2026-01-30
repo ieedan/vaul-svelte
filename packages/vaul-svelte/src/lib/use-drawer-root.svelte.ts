@@ -349,20 +349,7 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 		opts.open.current = o;
 	}
 
-	/**
-	 * Cap drawer height to the visual viewport so it doesn't extend below browser chrome
-	 * (e.g. Android bottom nav bar). Fixes modal/drawer being truncated on mobile.
-	 */
-	function capDrawerToVisualViewport() {
-		if (!drawerNode || !opts.open.current || !isVertical(opts.direction.current)) return;
-		const vh = getVisualViewportHeight();
-		drawerNode.style.maxHeight = `${vh}px`;
-	}
-
 	function onVisualViewportChange() {
-		// Always cap drawer to visual viewport when it resizes (e.g. browser chrome shows/hides)
-		capDrawerToVisualViewport();
-
 		if (!drawerNode || !opts.repositionInputs.current) return;
 
 		const focusedElement = document.activeElement as HTMLElement;
@@ -438,16 +425,6 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 		() => {
 			if (!window.visualViewport) return;
 			return on(window.visualViewport, "resize", onVisualViewportChange);
-		}
-	);
-
-	// Cap drawer to visual viewport when it opens (e.g. Android browser chrome)
-	watch(
-		[() => opts.open.current, () => drawerNode],
-		() => {
-			if (opts.open.current && drawerNode) {
-				window.requestAnimationFrame(() => capDrawerToVisualViewport());
-			}
 		}
 	);
 
