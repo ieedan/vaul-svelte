@@ -19,7 +19,15 @@ import {
 } from "./internal/constants.js";
 import { isIOS, isMobileFirefox } from "./internal/browser.js";
 import { on } from "svelte/events";
-import { dampenValue, getTranslate, isVertical, reset, set } from "./helpers.js";
+import {
+	dampenValue,
+	getTranslate,
+	isVertical,
+	reset,
+	set,
+	getVisualViewportHeight,
+	getVisualViewportWidth,
+} from "./helpers.js";
 import { watch } from "runed";
 import { DrawerContext } from "./context.js";
 
@@ -108,7 +116,8 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 	});
 
 	function getScale() {
-		return (window.innerWidth - WINDOW_TOP_OFFSET) / window.innerWidth;
+		const w = getVisualViewportWidth();
+		return (w - WINDOW_TOP_OFFSET) / w;
 	}
 
 	function onPress(event: PointerEvent) {
@@ -340,7 +349,20 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 		opts.open.current = o;
 	}
 
+	/**
+	 * Cap drawer height to the visual viewport so it doesn't extend below browser chrome
+	 * (e.g. Android bottom nav bar). Fixes modal/drawer being truncated on mobile.
+	 */
+	function capDrawerToVisualViewport() {
+		if (!drawerNode || !opts.open.current || !isVertical(opts.direction.current)) return;
+		const vh = getVisualViewportHeight();
+		drawerNode.style.maxHeight = `${vh}px`;
+	}
+
 	function onVisualViewportChange() {
+		// Always cap drawer to visual viewport when it resizes (e.g. browser chrome shows/hides)
+		capDrawerToVisualViewport();
+
 		if (!drawerNode || !opts.repositionInputs.current) return;
 
 		const focusedElement = document.activeElement as HTMLElement;
@@ -416,6 +438,16 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 		() => {
 			if (!window.visualViewport) return;
 			return on(window.visualViewport, "resize", onVisualViewportChange);
+		}
+	);
+
+	// Cap drawer to visual viewport when it opens (e.g. Android browser chrome)
+	watch(
+		[() => opts.open.current, () => drawerNode],
+		() => {
+			if (opts.open.current && drawerNode) {
+				window.requestAnimationFrame(() => capDrawerToVisualViewport());
+			}
 		}
 	);
 
@@ -565,11 +597,11 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 
 		const visibleDrawerHeight = Math.min(
 			drawerNode.getBoundingClientRect().height ?? 0,
-			window.innerHeight
+			getVisualViewportHeight()
 		);
 		const visibleDrawerWidth = Math.min(
 			drawerNode.getBoundingClientRect().width ?? 0,
-			window.innerWidth
+			getVisualViewportWidth()
 		);
 
 		const isHorizontalSwipe =
@@ -654,7 +686,9 @@ export function useDrawerRoot(opts: UseDrawerRootProps) {
 	}
 
 	function onNestedRelease(_event: PointerEvent, o: boolean) {
-		const dim = isVertical(opts.direction.current) ? window.innerHeight : window.innerWidth;
+		const dim = isVertical(opts.direction.current)
+			? getVisualViewportHeight()
+			: getVisualViewportWidth();
 		const scale = o ? (dim - NESTED_DISPLACEMENT) / dim : 1;
 		const translate = o ? -NESTED_DISPLACEMENT : 0;
 

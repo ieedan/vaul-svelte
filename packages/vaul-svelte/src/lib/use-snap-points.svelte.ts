@@ -2,7 +2,7 @@ import type { ReadableBoxedValues, WritableBoxedValues } from "svelte-toolbelt";
 import type { DrawerDirection, Getters } from "./types.js";
 import { onMount } from "svelte";
 import { on } from "svelte/events";
-import { isVertical, set } from "./helpers.js";
+import { isVertical, set, getVisualViewportHeight, getVisualViewportWidth } from "./helpers.js";
 import { TRANSITIONS, VELOCITY_THRESHOLD } from "./internal/constants.js";
 import { watch } from "runed";
 
@@ -35,21 +35,32 @@ export function useSnapPoints({
 		fadeFromIndex: number | undefined;
 		snapPoints: (number | string)[] | undefined;
 	}>) {
-	let windowDimensions = $state(
-		typeof window !== "undefined"
-			? { innerWidth: window.innerWidth, innerHeight: window.innerHeight }
-			: undefined
-	);
+	function getWindowDimensions() {
+		if (typeof window === "undefined") return undefined;
+		// Use visual viewport on mobile so drawer doesn't extend below browser chrome (e.g. Android bottom bar)
+		return {
+			innerWidth: getVisualViewportWidth(),
+			innerHeight: getVisualViewportHeight(),
+		};
+	}
+
+	let windowDimensions = $state(getWindowDimensions());
 
 	onMount(() => {
-		function onResize() {
-			windowDimensions = {
-				innerWidth: window.innerWidth,
-				innerHeight: window.innerHeight,
-			};
+		function updateDimensions() {
+			windowDimensions = getWindowDimensions();
 		}
 
-		return on(window, "resize", onResize);
+		const unsubResize = on(window, "resize", updateDimensions);
+		const visualViewport = window.visualViewport;
+		const unsubVv = visualViewport
+			? on(visualViewport, "resize", updateDimensions)
+			: () => {};
+
+		return () => {
+			unsubResize();
+			unsubVv();
+		};
 	});
 
 	const isLastSnapPoint = $derived(
@@ -77,7 +88,7 @@ export function useSnapPoints({
 					height: container.current.getBoundingClientRect().height,
 				}
 			: typeof window !== "undefined"
-				? { width: window.innerWidth, height: window.innerHeight }
+				? { width: getVisualViewportWidth(), height: getVisualViewportHeight() }
 				: { width: 0, height: 0 };
 
 		return (
@@ -241,7 +252,7 @@ export function useSnapPoints({
 				: prev;
 		});
 
-		const dim = isVertical(dir) ? window.innerHeight : window.innerWidth;
+		const dim = isVertical(dir) ? getVisualViewportHeight() : getVisualViewportWidth();
 
 		if (velocity > VELOCITY_THRESHOLD && Math.abs(draggedDistance) < dim * 0.4) {
 			const dragDirection = hasDraggedUp ? 1 : -1; // 1 = up, -1 = down

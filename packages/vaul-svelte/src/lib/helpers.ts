@@ -7,6 +7,33 @@ interface Style {
 
 const cache = new WeakMap();
 
+/**
+ * Returns the effective viewport height for layout. On Android Chrome (and similar
+ * mobile browsers), the bottom nav bar reduces the visible area but window.innerHeight
+ * can still report the full layout viewport. Using visualViewport.height when available
+ * ensures the drawer doesn't extend below the browser chrome.
+ */
+export function getVisualViewportHeight(): number {
+	if (typeof window === "undefined") return 0;
+	const vv = window.visualViewport;
+	if (vv?.height != null && vv.height > 0) {
+		return vv.height;
+	}
+	return window.innerHeight;
+}
+
+/**
+ * Returns the effective viewport width for layout (visual viewport when available).
+ */
+export function getVisualViewportWidth(): number {
+	if (typeof window === "undefined") return 0;
+	const vv = window.visualViewport;
+	if (vv?.width != null && vv.width > 0) {
+		return vv.width;
+	}
+	return window.innerWidth;
+}
+
 export function isInView(el: HTMLElement): boolean {
 	const rect = el.getBoundingClientRect();
 
